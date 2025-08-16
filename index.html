@@ -1,1 +1,314 @@
+<!DOCTYPE html>
+<html lang="es">
 
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Enigma – Demo de Descifrado</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --ink: #e9eefc;
+      --muted: #9fb0d9;
+      --accent: #71d0ff;
+      --hot: #ffd166
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif
+    }
+
+    h1 {
+      font-size: clamp(18px, 2.6vw, 28px);
+      margin: 12px
+    }
+
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 12px 20px
+    }
+
+    .panel {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      background: #0f1530;
+      border-top: 1px solid #1b2450;
+      border-bottom: 1px solid #1b2450;
+      padding: 10px;
+      border-radius: 12px
+    }
+
+    select,
+    input[type=text],
+    textarea {
+      background: #0f1530;
+      border: 1px solid #334485;
+      border-radius: 10px;
+      color: var(--ink);
+      padding: 6px 8px
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 74px
+    }
+
+    .btn {
+      background: #121a3e;
+      border: 1px solid #2b3b7a;
+      color: var(--ink);
+      padding: 8px 12px;
+      border-radius: 12px;
+      cursor: pointer
+    }
+
+    .btn:hover {
+      background: #1a234f
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 16px;
+      margin-top: 14px
+    }
+
+    .card {
+      background: #121836;
+      border: 1px solid #1c2a64;
+      border-radius: 14px;
+      padding: 10px
+    }
+
+    .letters {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 4px
+    }
+
+    .letters div,
+    .letters button {
+      background: #10162e;
+      border: 1px solid #2b3b7a;
+      color: var(--ink);
+      border-radius: 10px;
+      padding: 4px 6px
+    }
+
+    .letters .path {
+      background: #1a2347;
+      color: #71d0ff;
+      border-color: #3b5bd1;
+      box-shadow: 0 0 0 2px #3b5bd177 inset
+    }
+
+    .letters .hit {
+      background: #ffd166;
+      color: #222;
+      border-color: #ffb703
+    }
+
+    .lamp {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 4px
+    }
+
+    .lamp .on {
+      background: #ffe08a;
+      color: #111
+    }
+
+    .kbd {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px
+    }
+
+    .kbd button {
+      padding: 8px 0
+    }
+
+    .muted {
+      color: var(--muted)
+    }
+
+    .badges {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap
+    }
+
+    .badge {
+      border: 1px solid #2a3c8b;
+      border-radius: 10px;
+      padding: 2px 8px;
+      color: var(--muted)
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Enigma – Demo de <u>Descifrado</u> (mismo proceso que cifrar, con la configuración correcta)</h1>
+  <div class="wrap">
+    <div class="panel">
+      <div class="badges">
+        <span class="badge">Rotores: <b>I·II·III</b></span>
+        <span class="badge">Reflector: <b>B</b></span>
+        <span class="badge">Plugboard: <b>vacío</b></span>
+      </div>
+      <label>Posiciones iniciales:
+        <select id="pL"></select>
+        <select id="pM"></select>
+        <select id="pR"></select>
+      </label>
+      <button class="btn" id="reset">Reiniciar posiciones</button>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <p class="muted">Introduce el <b>texto cifrado</b> y pulsa «Descifrar paso a paso». Con la misma configuración que
+        se usó para cifrar, el recorrido inverso produce el texto original.</p>
+      <textarea id="cipher" placeholder="Texto cifrado (A‑Z)">BUPRZQ</textarea>
+      <div style="display:flex;gap:10px;margin-top:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn" id="decBtn">Descifrar paso a paso</button>
+        <button class="btn" id="oneBtn">Descifrar 1 letra</button>
+        <span class="badge">Salida: <b id="plainOut"></b></span>
+        <span class="badge">Posiciones actuales: <b id="posL">A</b> <b id="posM">A</b> <b id="posR">A</b></span>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h3 class="muted">Teclado (cifrado)</h3>
+        <div id="kbd" class="kbd"></div>
+      </div>
+      <div class="card">
+        <h3 class="muted">Rotor derecho (III)</h3>
+        <div id="rR" class="letters"></div>
+      </div>
+      <div class="card">
+        <h3 class="muted">Rotor medio (II)</h3>
+        <div id="rM" class="letters"></div>
+      </div>
+      <div class="card">
+        <h3 class="muted">Rotor izquierdo (I)</h3>
+        <div id="rL" class="letters"></div>
+      </div>
+      <div class="card">
+        <h3 class="muted">Reflector B</h3>
+        <div id="refl" class="letters"></div>
+      </div>
+      <div class="card">
+        <h3 class="muted">Lámparas (texto plano)</h3>
+        <div id="lamp" class="lamp"></div>
+      </div>
+    </div>
+
+    <p class="muted" style="margin-top:10px">Nota: Enigma es <b>simétrica</b>. Con la misma configuración, el circuito
+      es idéntico para cifrar o descifrar. Aquí interpretamos la entrada como <i>cifrado</i> y la lámpara encendida como
+      <i>texto plano</i>.</p>
+  </div>
+
+  <script>
+    // ====== Enigma (Enigma I simplificada) ======
+    const AZ = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
+    const ROT = { I: { m: 'EKMFLGDQVZNTOWYHXUSPAIBRCJ', n: 'Q' }, II: { m: 'AJDKSIRUXBLHWTMCQGZNPYFVOE', n: 'E' }, III: { m: 'BDFHJLCPRTXVZNYEIWGAKMUSQO', n: 'V' } };
+    const REF = 'YRUHQSLDPXNGOKMIEBFZCWVJAT';
+    const PLUG = {}; // plugboard vacío
+    let L = { id: 'I', p: 0 }, M = { id: 'II', p: 0 }, R = { id: 'III', p: 0 };
+
+    // helpers
+    const id = c => c.charCodeAt(0) - 65, ch = i => AZ[(i + 26) % 26];
+    const plug = i => (PLUG[ch(i)] ? id(PLUG[ch(i)]) : i);
+    function fwd(i, rot, pos) { const w = ROT[rot].m; const s = (i + pos) % 26; return (id(w[s]) - pos + 26) % 26 }
+    function bwd(i, rot, pos) { const w = ROT[rot].m; const s = (i + pos) % 26; return (w.indexOf(ch(s)) - pos + 26) % 26 }
+    function step() {
+      const nR = id(ROT[R.id].n), nM = id(ROT[M.id].n);
+      const atR = R.p === nR, atM = M.p === nM;
+      R.p = (R.p + 1) % 26; // siempre avanza
+      if (atR || atM) M.p = (M.p + 1) % 26; // doble paso
+      if (atM) L.p = (L.p + 1) % 26;
+      renderPos();
+    }
+    function renderPos() {
+      document.getElementById('posL').textContent = ch(L.p);
+      document.getElementById('posM').textContent = ch(M.p);
+      document.getElementById('posR').textContent = ch(R.p);
+    }
+
+    // visual
+    const E = { kbd: document.getElementById('kbd'), rR: document.getElementById('rR'), rM: document.getElementById('rM'), rL: document.getElementById('rL'), refl: document.getElementById('refl'), lamp: document.getElementById('lamp') };
+    function fill(c, b = false) { c.innerHTML = ''; AZ.forEach(x => { const n = b ? document.createElement('button') : document.createElement('div'); n.textContent = x; c.appendChild(n); }); }
+    function render() { fill(E.rR); fill(E.rM); fill(E.rL); fill(E.refl); fill(E.lamp); fill(E.kbd, true); E.kbd.querySelectorAll('button').forEach(b => b.onclick = () => decOne(b.textContent)); }
+    function mark(c, letter, cls) { const i = id(letter); c.children[i].classList.add(cls) }
+    function clearMarks() { document.querySelectorAll('.path,.hit,.on').forEach(n => n.classList.remove('path', 'hit', 'on')) }
+    async function animatePath(s) {
+      clearMarks(); const wait = ms => new Promise(r => setTimeout(r, ms));
+      mark(E.kbd, s.key, 'hit'); await wait(150);
+      mark(E.rR, ch(s.r1), 'path'); await wait(120);
+      mark(E.rM, ch(s.r2), 'path'); await wait(120);
+      mark(E.rL, ch(s.r3), 'path'); await wait(120);
+      mark(E.refl, ch(s.rf), 'path'); await wait(120);
+      mark(E.rL, ch(s.r3b), 'path'); await wait(120);
+      mark(E.rM, ch(s.r2b), 'path'); await wait(120);
+      mark(E.rR, ch(s.r1b), 'path'); await wait(120);
+      mark(E.lamp, s.out, 'on');
+    }
+
+    function compute(letter) {
+      // Entrada interpretada como "cifrado"
+      let i = id(letter);
+      i = plug(i);
+      const beforeR = i; // para resaltar
+      const r1 = fwd(i, R.id, R.p);
+      const r2 = fwd(r1, M.id, M.p);
+      const r3 = fwd(r2, L.id, L.p);
+      const rf = id(REF[r3]);
+      const r3b = bwd(rf, L.id, L.p);
+      const r2b = bwd(r3b, M.id, M.p);
+      const r1b = bwd(r2b, R.id, R.p);
+      const out = ch(plug(r1b)); // texto plano
+      return { key: letter, r1, r2, r3, rf, r3b, r2b, r1b, out };
+    }
+
+    async function decOne(c) { if (!/[A-Z]/.test(c)) return; step(); const s = compute(c); await animatePath(s); plain.value += s.out; outBadge.textContent = plain.value; }
+
+    async function decAll() {
+      const text = cipher.value.toUpperCase().replace(/[^A-Z]/g, '');
+      for (const c of text) { await decOne(c); }
+    }
+
+    // UI posiciones
+    function fillSelect(sel) { sel.innerHTML = ''; AZ.forEach(l => { const o = document.createElement('option'); o.value = o.textContent = l; sel.appendChild(o); }); }
+    const sL = document.getElementById('pL'), sM = document.getElementById('pM'), sR = document.getElementById('pR');
+    fillSelect(sL); fillSelect(sM); fillSelect(sR);
+    sL.value = 'A'; sM.value = 'A'; sR.value = 'A';
+    function applyPositions() { L.p = id(sL.value); M.p = id(sM.value); R.p = id(sR.value); renderPos(); }
+    applyPositions();
+
+    // referencias de campos
+    const cipher = document.getElementById('cipher');
+    const plain = document.createElement('textarea'); // buffer oculto
+    plain.value = '';
+    const outBadge = document.getElementById('plainOut');
+
+    // botones
+    document.getElementById('decBtn').onclick = decAll;
+    document.getElementById('oneBtn').onclick = () => { const t = cipher.value.toUpperCase().replace(/[^A-Z]/g, ''); if (t.length) { cipher.value = t.slice(1); decOne(t[0]); } };
+    document.getElementById('reset').onclick = () => { applyPositions(); plain.value = ''; outBadge.textContent = ''; clearMarks(); };
+
+    // teclado de entrada (permite descifrar letra por letra)
+    fill(E.kbd, true);
+    render();
+  </script>
+</body>
+
+</html>
